@@ -2,8 +2,13 @@
 
 # ScanTailor Universal Build Script with PDF Support
 # Sets up environment variables and builds the project
+# Usage: ./build_scantailor.sh [build_type]
+# build_type: Release (default) or Debug
+
+BUILD_TYPE="${1:-Release}"
 
 echo "=== ScanTailor Universal Build Script ==="
+echo "Build type: $BUILD_TYPE"
 echo "Setting up environment for PDF support..."
 
 # Set up environment variables - detect package manager and paths
@@ -121,7 +126,7 @@ cd build
 
 # Prepare CMake arguments dynamically
 cmake_args=(
-  -DCMAKE_BUILD_TYPE=Release
+  -DCMAKE_BUILD_TYPE="$BUILD_TYPE"
   -DCMAKE_MODULE_PATH="$(pwd)/../cmake"
   -G "Unix Makefiles"
 )
