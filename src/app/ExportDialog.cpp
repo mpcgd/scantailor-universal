@@ -60,11 +60,28 @@ ExportDialog::ExportDialog(QWidget* parent, const QString& defaultOutDir)
     connect(ui.GenerateBlankBackSubscans, SIGNAL(toggled(bool)), this, SLOT(OnCheckGenerateBlankBackSubscans(bool)));
     connect(ui.UseSepSuffixForPics, SIGNAL(toggled(bool)), this, SLOT(OnCheckUseSepSuffixForPics(bool)));
     connect(ui.KeepOriginalColorIllumForeSubscans, SIGNAL(toggled(bool)), this, SLOT(OnCheckKeepOriginalColorIllumForeSubscans(bool)));
+    connect(ui.rbFormatTIFF, SIGNAL(toggled(bool)), this, SLOT(onOutputFormatChanged()));
+    connect(ui.rbFormatPNG, SIGNAL(toggled(bool)), this, SLOT(onOutputFormatChanged()));
+    connect(ui.sliderPngCompression, SIGNAL(valueChanged(int)), this, SLOT(onPngCompressionChanged(int)));
 
     ui.GenerateBlankBackSubscans->setChecked(m_settings.value(_key_export_generate_blank_subscans, _key_export_generate_blank_subscans_def).toBool());
     ui.UseSepSuffixForPics->setChecked(m_settings.value(_key_export_use_sep_suffix, _key_export_use_sep_suffix_def).toBool());
     ui.KeepOriginalColorIllumForeSubscans->setChecked(m_settings.value(_key_export_keep_original_color, _key_export_keep_original_color_def).toBool());
     ui.cbMultipageOutput->setChecked(m_settings.value(_key_export_to_multipage, _key_export_to_multipage_def).toBool());
+
+    // Initialize PNG settings (only enable when not multipage)
+    bool isMultipage = ui.cbMultipageOutput->isChecked();
+    ui.gbOutputFormat->setEnabled(!isMultipage);
+    if (!isMultipage) {
+        ui.rbFormatTIFF->setChecked(m_settings.value(_key_export_output_format, 0).toInt() == 0);
+        ui.rbFormatPNG->setChecked(m_settings.value(_key_export_output_format, 0).toInt() == 1);
+    } else {
+        ui.rbFormatTIFF->setChecked(true);
+        ui.rbFormatPNG->setChecked(false);
+    }
+    ui.sliderPngCompression->setValue(m_settings.value(_key_export_png_compression, _key_export_png_compression_def).toInt());
+    onPngCompressionChanged(ui.sliderPngCompression->value());
+    onOutputFormatChanged();
 }
 
 ExportDialog::~ExportDialog()
@@ -75,12 +92,11 @@ void
 ExportDialog::displayExportMode(ExportModes mode)
 {
     ui.cbExportImage->setChecked(mode.testFlag(ExportMode::WholeImage));
-    ui.cbExportWithoutOutputStage->setChecked(mode.testFlag(ExportMode::ImageWithoutOutputStage));
     ui.cbExportForeground->setChecked(mode.testFlag(ExportMode::Foreground));
     ui.cbExportBackground->setChecked(mode.testFlag(ExportMode::Background));
     ui.cbExportAutomask->setChecked(mode.testFlag(ExportMode::AutoMask));
     ui.cbExportMask->setChecked(mode.testFlag(ExportMode::Mask));
-    ui.cbExportZones->setChecked(mode.testFlag(ExportMode::Zones));
+    ui.cbExportZones->setChecked(mode.testFlag(ExportMode::Zones) || mode.testFlag(ExportMode::ImageWithoutOutputStage));
 }
 
 void
@@ -280,6 +296,12 @@ ExportDialog::startExport(void)
     settings.page_gen_tweaks.setFlag(PageGenTweak::IgnoreOutputProcessingStage, mode.testFlag(ExportMode::ImageWithoutOutputStage));
 #endif
     settings.export_selected_pages_only = ui.cbExportSelected->isChecked();
+    settings.output_format = ui.rbFormatTIFF->isChecked() ? OutputFormat::TIFF : OutputFormat::PNG;
+    settings.png_compression_level = ui.sliderPngCompression->value();
+
+    // Save settings
+    m_settings.setValue(_key_export_output_format, (int)settings.output_format);
+    m_settings.setValue(_key_export_png_compression, settings.png_compression_level);
 
     emit ExportOutputSignal(settings);
 }
@@ -370,6 +392,12 @@ void ExportDialog::on_cbExportZones_stateChanged(int arg1)
 void ExportDialog::on_cbMultipageOutput_toggled(bool checked)
 {
     m_settings.setValue(_key_export_to_multipage, checked);
+    // Disable PNG format when multipage is enabled since PNG doesn't support multipage
+    if (checked && ui.rbFormatPNG->isChecked()) {
+        ui.rbFormatTIFF->setChecked(true);
+        onOutputFormatChanged();
+    }
+    ui.gbOutputFormat->setEnabled(!checked);
 }
 
 void ExportDialog::on_cbExportImage_stateChanged(int arg1)
@@ -382,10 +410,7 @@ void ExportDialog::on_cbExportAutomask_stateChanged(int arg1)
     saveExportMode(ExportMode::AutoMask, arg1);
 }
 
-void ExportDialog::on_cbExportWithoutOutputStage_stateChanged(int arg1)
-{
-    saveExportMode(ExportMode::ImageWithoutOutputStage, arg1);
-}
+
 
 void ExportDialog::on_btnResetToDefault_clicked()
 {
@@ -394,6 +419,24 @@ void ExportDialog::on_btnResetToDefault_clicked()
     ui.UseSepSuffixForPics->setChecked(_key_export_use_sep_suffix_def);
     ui.KeepOriginalColorIllumForeSubscans->setChecked(_key_export_keep_original_color_def);
     ui.cbMultipageOutput->setChecked(_key_export_to_multipage_def);
+    ui.rbFormatTIFF->setChecked(true);
+    ui.rbFormatPNG->setChecked(false);
+    ui.sliderPngCompression->setValue(_key_export_png_compression_def);
+    onPngCompressionChanged(ui.sliderPngCompression->value());
+    onOutputFormatChanged();
+}
+
+void ExportDialog::onOutputFormatChanged()
+{
+    bool isPngSelected = ui.rbFormatPNG->isChecked();
+    ui.sliderPngCompression->setEnabled(isPngSelected);
+    ui.labelCompression->setEnabled(isPngSelected);
+    ui.labelCompressionValue->setEnabled(isPngSelected);
+}
+
+void ExportDialog::onPngCompressionChanged(int value)
+{
+    ui.labelCompressionValue->setText(QString::number(value));
 }
 
 }

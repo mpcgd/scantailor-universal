@@ -21,6 +21,7 @@
 #include "ImageLoader.h"
 #include "ImageSplitOps.h"
 #include "TiffWriter.h"
+#include "PngWriter.h"
 #include "settings/globalstaticsettings.h"
 #ifdef _OPENMP
 #include <omp.h>
@@ -33,6 +34,21 @@
 namespace exporting {
 
 const int dummy = qRegisterMetaType<PageId>("PageId");
+
+namespace {
+    bool writeImage(const QString& file_path, const QImage& image, exporting::OutputFormat format,
+                    bool multipage, int page_no, int compression_level = -1, QString* compression_used = nullptr) {
+        if (format == exporting::OutputFormat::PNG) {
+            // PNG doesn't support multipage
+            if (multipage) {
+                return false;
+            }
+            return PngWriter::writeImage(file_path, image, compression_level);
+        } else {
+            return TiffWriter::writeImage(file_path, image, multipage, page_no, compression_used);
+        }
+    }
+}
 
 ExportThread::ExportThread(const ExportSettings& settings, const QVector<ExportRec>& outpaths,
                            const QString& export_dir, QObject *parent): QThread(parent),
@@ -127,7 +143,7 @@ ExportThread::run()
 
             QImage out_img = ImageLoader::load(out_file_path);
 
-            QString out_file_path_no_split = m_export_dir + QDir::separator() + name + ".tif";
+            QString out_file_path_no_split = m_export_dir + QDir::separator() + name + (m_settings.output_format == OutputFormat::PNG ? ".png" : ".tif");
 
             if (m_settings.mode.testFlag(ExportMode::Zones)) {
                 const QStringList& zones_info = rec.zones_info;
@@ -171,29 +187,25 @@ ExportThread::run()
             int page_no = 0;
 
             if (m_settings.mode.testFlag(ExportMode::WholeImage)) {
-                TiffWriter::writeImage(out_file_path_no_split,
-                                       m_settings.page_gen_tweaks.testFlag(PageGenTweak::IgnoreOutputProcessingStage) ? m_orig_fore_subscan : out_img,
-                                       m_settings.export_to_multipage, page_no);
+                writeImage(out_file_path_no_split,
+                          m_settings.page_gen_tweaks.testFlag(PageGenTweak::IgnoreOutputProcessingStage) ? m_orig_fore_subscan : out_img,
+                          m_settings.output_format, m_settings.export_to_multipage, page_no, m_settings.png_compression_level);
                 if (m_settings.export_to_multipage) {
                     page_no++;
                 }
             }
 
             if (img_foreground) {
-                QString out_filepath_foreground = text_dir + QDir::separator() + name + ".tif";
-                TiffWriter::writeImage(m_settings.export_to_multipage ? out_file_path_no_split : out_filepath_foreground,
-                                       *img_foreground,
-                                       m_settings.export_to_multipage,
-                                       page_no++
-                                       );
+                QString extension = (m_settings.output_format == OutputFormat::PNG && !m_settings.export_to_multipage) ? ".png" : ".tif";
+                QString out_filepath_foreground = text_dir + QDir::separator() + name + extension;
+                writeImage(m_settings.export_to_multipage ? out_file_path_no_split : out_filepath_foreground,
+                          *img_foreground, m_settings.output_format, m_settings.export_to_multipage, page_no++, m_settings.png_compression_level);
             }
             if (img_background && (!only_bw || m_settings.generate_blank_back_subscans)) {
-                QString out_filepath_background = m_settings.use_sep_suffix_for_pics ? ".sep.tif" : ".tif";
-                out_filepath_background = pic_dir + QDir::separator() + name + out_filepath_background;
-                TiffWriter::writeImage(m_settings.export_to_multipage ? out_file_path_no_split : out_filepath_background,
-                                       *img_background,
-                                       m_settings.export_to_multipage,
-                                       page_no++);
+                QString extension = (m_settings.output_format == OutputFormat::PNG && !m_settings.export_to_multipage) ? ".png" : (m_settings.use_sep_suffix_for_pics ? ".sep.tif" : ".tif");
+                QString out_filepath_background = pic_dir + QDir::separator() + name + extension;
+                writeImage(m_settings.export_to_multipage ? out_file_path_no_split : out_filepath_background,
+                          *img_background, m_settings.output_format, m_settings.export_to_multipage, page_no++, m_settings.png_compression_level);
             }
 
             if (m_settings.mode.testFlag(ExportMode::AutoMask)) {
@@ -201,22 +213,20 @@ ExportThread::run()
                 QString filepath_automask = fi.path() + "/cache/automask/" + fi.fileName();
                 QImage automask_img = (QFile::exists(filepath_automask)) ? ImageLoader::load(filepath_automask) :
                                                                            ImageSplitOps::GenerateBlankImage(out_img, out_img.format(), 0x00000000);
-                QString out_filepath_mask = mask_dir + QDir::separator() + name + ".auto.tif";
-                TiffWriter::writeImage(m_settings.export_to_multipage ? out_file_path_no_split : out_filepath_mask,
-                                       automask_img,
-                                       m_settings.export_to_multipage,
-                                       page_no);
+                QString extension = (m_settings.output_format == OutputFormat::PNG && !m_settings.export_to_multipage) ? ".auto.png" : ".auto.tif";
+                QString out_filepath_mask = mask_dir + QDir::separator() + name + extension;
+                writeImage(m_settings.export_to_multipage ? out_file_path_no_split : out_filepath_mask,
+                          automask_img, m_settings.output_format, m_settings.export_to_multipage, page_no, m_settings.png_compression_level);
                 if (m_settings.export_to_multipage) {
                     page_no++;
                 }
             }
 
             if (img_mask) {
-                QString out_filepath_mask = mask_dir + QDir::separator() + name + ".tif";
-                TiffWriter::writeImage(m_settings.export_to_multipage ? out_file_path_no_split : out_filepath_mask,
-                                       *img_mask,
-                                       m_settings.export_to_multipage,
-                                       page_no++);
+                QString extension = (m_settings.output_format == OutputFormat::PNG && !m_settings.export_to_multipage) ? ".png" : ".tif";
+                QString out_filepath_mask = mask_dir + QDir::separator() + name + extension;
+                writeImage(m_settings.export_to_multipage ? out_file_path_no_split : out_filepath_mask,
+                          *img_mask, m_settings.output_format, m_settings.export_to_multipage, page_no++, m_settings.png_compression_level);
             }
 
             emit imageProcessed();

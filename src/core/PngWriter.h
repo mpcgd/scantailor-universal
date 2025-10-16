@@ -17,40 +17,24 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef EXPORTSETTINGS_H
-#define EXPORTSETTINGS_H
+#ifndef PNGWRITER_H
+#define PNGWRITER_H
 
 #include <QString>
-#include "ExportModes.h"
+#include <QImage>
 
-namespace exporting {
-
-    enum PageGenTweak {
-    NoTweaks = 0,
-    KeepOriginalColorIllumForeSubscans = 1,
-    IgnoreOutputProcessingStage = 2
-    };
-
-    enum OutputFormat {
-        TIFF = 0,
-        PNG = 1
-    };
-
-    Q_DECLARE_FLAGS(PageGenTweaks, PageGenTweak)
-
-struct ExportSettings {
-    ExportModes mode;
-    bool default_out_dir;
-    QString export_dir_path;
-    bool export_to_multipage;
-    bool generate_blank_back_subscans;
-    bool use_sep_suffix_for_pics;
-    PageGenTweaks page_gen_tweaks;
-    bool export_selected_pages_only;
-    OutputFormat output_format;
-    int png_compression_level;
+class PngWriter
+{
+public:
+    /**
+     * \brief Writes a QImage to a PNG file.
+     *
+     * \param file_path The file to write to. If the file exists, it will be overwritten.
+     * \param image The image to write. If it's null, false is returned.
+     * \param compression_level The compression level (0-9). 0 for no compression, 9 for maximum compression. Default is -1 (Qt's default).
+     * \return True on success, false on failure.
+     */
+    static bool writeImage(QString const& file_path, QImage const& image, int compression_level = -1);
 };
 
-}
-
-#endif // EXPORTSETTINGS_H
+#endif // PNGWRITER_H

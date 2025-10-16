@@ -118,6 +118,10 @@ static const char* _key_export_keep_original_color = "settings/keep_original_col
 static const bool  _key_export_keep_original_color_def = false;
 static const char* _key_export_to_multipage = "settings/export_to_multipage";
 static const bool  _key_export_to_multipage_def = false;
+static const char* _key_export_output_format = "settings/export_output_format";
+static const int   _key_export_output_format_def = 0; // 0 = TIFF, 1 = PNG
+static const char* _key_export_png_compression = "settings/export_png_compression";
+static const int   _key_export_png_compression_def = 9; // Default PNG compression level (maximum)
 static const char* _key_export_split_mixed_settings = "settings/split_mixed_settings";
 namespace exporting {
 static const int _key_export_split_mixed_settings_def = (int) ExportModes(ExportMode::Foreground | ExportMode::Background);

@@ -112,6 +112,79 @@
         </widget>
        </item>
        <item>
+        <widget class="QGroupBox" name="gbOutputFormat">
+         <property name="title">
+          <string>Output Format</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_6">
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_4">
+            <item>
+             <widget class="QRadioButton" name="rbFormatTIFF">
+              <property name="text">
+               <string>TIFF</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QRadioButton" name="rbFormatPNG">
+              <property name="text">
+               <string>PNG</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_5">
+            <item>
+             <widget class="QLabel" name="labelCompression">
+              <property name="text">
+               <string>PNG Compression Level:</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QSlider" name="sliderPngCompression">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="minimum">
+               <number>0</number>
+              </property>
+              <property name="maximum">
+               <number>9</number>
+              </property>
+              <property name="value">
+               <number>9</number>
+              </property>
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="labelCompressionValue">
+              <property name="text">
+               <string>9</string>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>20</width>
+                <height>0</height>
+               </size>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
         <widget class="QCheckBox" name="DefaultOutputFolder">
          <property name="text">
           <string>Default export folder</string>
@@ -219,27 +292,17 @@
         </widget>
        </item>
        <item>
-        <widget class="QCheckBox" name="cbExportWithoutOutputStage">
-         <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This will have effect if only Export Whole image is checked.&lt;/p&gt;&lt;p&gt;The exported image will be drawn with colors of original image.&lt;/p&gt;&lt;p&gt;Only fill zones will be applied. In other words the exported&lt;/p&gt;&lt;p&gt;image will be a part of original image after split, rotation,&lt;/p&gt;&lt;p&gt;deskew, applying margins and fill zones. This require image&lt;/p&gt;&lt;p&gt;reprocessing so it may be time consuming.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-         </property>
-         <property name="text">
-          <string>Skip processing at Output stage (except for Fill Zones) 
-for exported image (lengthy)</string>
-         </property>
-        </widget>
-       </item>
-       <item>
         <widget class="QCheckBox" name="KeepOriginalColorIllumForeSubscans">
          <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This will have effect if only Export Foreground is checked.&lt;/p&gt;&lt;p&gt;Foreground is a b/w image with a black content of resulting&lt;/p&gt;&lt;p&gt;image drown on white. With this mode on every black pixel will&lt;/p&gt;&lt;p&gt;be replaced with pixel on the same position taken from original&lt;/p&gt;&lt;p&gt;image. This may let you get colored or grayscale text instead of&lt;/p&gt;&lt;p&gt;binarized black one. Require image reprocessing so may be&lt;/p&gt;&lt;p&gt;time consuming.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          <string>This will have effect if only Export Foreground is checked. Foreground is a b/w image with a black content of resulting image drown on white. With this mode on every black pixel will be replaced with pixel on the same position taken from original image. This may let you get colored or grayscale text instead of binarized black one. Require image reprocessing so may be time consuming.</string>
          </property>
          <property name="text">
-          <string>Skip processing at Output stage (except for Fill Zones) 
+          <string>Skip processing at Output stage (except for Fill Zones)
 for content in foreground subscans (lengthy)</string>
          </property>
         </widget>
        </item>
+
        <item>
         <spacer name="verticalSpacer">
          <property name="orientation">

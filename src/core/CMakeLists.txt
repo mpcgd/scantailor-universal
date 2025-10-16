@@ -81,6 +81,7 @@ SET(
         ImageMetadataLoader.cpp ImageMetadataLoader.h
         TiffReader.cpp TiffReader.h
         TiffWriter.cpp TiffWriter.h
+        PngWriter.cpp PngWriter.h
         PngMetadataLoader.cpp PngMetadataLoader.h
         TiffMetadataLoader.cpp TiffMetadataLoader.h
         JpegMetadataLoader.cpp JpegMetadataLoader.h

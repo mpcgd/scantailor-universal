@@ -80,7 +80,8 @@ private Q_SLOTS:
 
     void on_cbExportAutomask_stateChanged(int arg1);
 
-    void on_cbExportWithoutOutputStage_stateChanged(int arg1);
+    void onOutputFormatChanged();
+    void onPngCompressionChanged(int value);
 
     void on_btnResetToDefault_clicked();
 
