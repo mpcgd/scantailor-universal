@@ -325,6 +325,76 @@ Settings::initialPictureZoneProps()
     return props;
 }
 
+void
+Settings::setOutputFormat(PageId const& page_id, OutputFormat::Format format)
+{
+    QMutexLocker const locker(&m_mutex);
+
+    PerPageParams::iterator const it(m_perPageParams.lower_bound(page_id));
+    if (it == m_perPageParams.end() || m_perPageParams.key_comp()(page_id, it->first)) {
+        Params params;
+        params.setOutputFormat(format);
+        m_perPageParams.insert(it, PerPageParams::value_type(page_id, params));
+    } else {
+        it->second.setOutputFormat(format);
+    }
+}
+
+OutputFormat::Format
+Settings::getOutputFormat(PageId const& page_id) const
+{
+    QMutexLocker const locker(&m_mutex);
+
+    PerPageParams::const_iterator const it(m_perPageParams.find(page_id));
+    if (it != m_perPageParams.end()) {
+        OutputFormat::Format format = it->second.getOutputFormat();
+        if (format != OutputFormat::NotSet) {
+            return format;
+        }
+    }
+
+    // Fall back to color mode-based default
+    Params params = getParams(page_id);
+    ColorParams::ColorMode color_mode = params.colorParams().colorMode();
+
+    QString default_format_str = (color_mode == ColorParams::BLACK_AND_WHITE)
+                                 ? GlobalStaticSettings::m_output_default_format_bw
+                                 : GlobalStaticSettings::m_output_default_format_color;
+
+    return OutputFormat::fromString(default_format_str);
+}
+
+void
+Settings::setPngCompressionLevel(PageId const& page_id, int level)
+{
+    QMutexLocker const locker(&m_mutex);
+
+    PerPageParams::iterator const it(m_perPageParams.lower_bound(page_id));
+    if (it == m_perPageParams.end() || m_perPageParams.key_comp()(page_id, it->first)) {
+        Params params;
+        params.setPngCompressionLevel(level);
+        m_perPageParams.insert(it, PerPageParams::value_type(page_id, params));
+    } else {
+        it->second.setPngCompressionLevel(level);
+    }
+}
+
+int
+Settings::getPngCompressionLevel(PageId const& page_id) const
+{
+    QMutexLocker const locker(&m_mutex);
+
+    PerPageParams::const_iterator const it(m_perPageParams.find(page_id));
+    if (it != m_perPageParams.end()) {
+        int level = it->second.getPngCompressionLevel();
+        if (level != -1) { // -1 indicates no page-specific setting
+            return level;
+        }
+    }
+    // Fall back to global default
+    return GlobalStaticSettings::m_output_png_compression_level;
+}
+
 PropertySet
 Settings::initialFillZoneProps()
 {

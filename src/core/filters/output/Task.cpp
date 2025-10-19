@@ -55,6 +55,7 @@
 #include "DebugImages.h"
 #include "OutputGenerator.h"
 #include "TiffWriter.h"
+#include "PngWriter.h"
 #include "ImageLoader.h"
 #include "ErrorWidget.h"
 #include "imageproc/BinaryImage.h"
@@ -211,7 +212,9 @@ Task::process(
     }
 
     RenderParams render_params(params.colorParams());
-    QString const out_file_path(m_outFileNameGen.filePathFor(m_pageId));
+    // Get the output format for this page
+    OutputFormat::Format const page_format = params.getOutputFormat();
+    QString const out_file_path(m_outFileNameGen.filePathFor(m_pageId, page_format));
     QFileInfo const out_file_info(out_file_path);
 
     ImageTransformation new_xform(data.xform());
@@ -249,6 +252,13 @@ Task::process(
         new_xform, content_rect_phys
     );
 
+    ColorParams::ColorMode color_mode = params.colorParams().colorMode();
+    QString default_format_str = (color_mode == ColorParams::BLACK_AND_WHITE)
+                                 ? GlobalStaticSettings::m_output_default_format_bw
+                                 : GlobalStaticSettings::m_output_default_format_color;
+    OutputFormat::Format default_format = OutputFormat::fromString(default_format_str);
+    int default_png_compression = GlobalStaticSettings::m_output_png_compression_level;
+
     OutputImageParams new_output_image_params(
         generator.outputImageSize(), generator.outputContentRect(),
         new_xform, params.outputDpi(), params.colorParams(),
@@ -256,7 +266,8 @@ Task::process(
         params.depthPerception(), params.despeckleLevel(),
         params.colorParams().colorMode() == ColorParams::BLACK_AND_WHITE ?
                     GlobalStaticSettings::m_tiff_compr_method_bw :
-                    GlobalStaticSettings::m_tiff_compr_method_color);
+                    GlobalStaticSettings::m_tiff_compr_method_color,
+        default_format, default_png_compression);
 
 //begin of modified by monday2000
 //Quadro_Zoner
@@ -469,19 +480,27 @@ Task::process(
         bool invalidate_params = false;
 
         QString TiffCompressionUsed;
+        bool write_success = false;
 
-        if (!TiffWriter::writeImage(out_file_path, out_img, false, 0, &TiffCompressionUsed)) {
+        if (new_output_image_params.outputFormat() == OutputFormat::PNG) {
+            write_success = PngWriter::writeImage(out_file_path, out_img, new_output_image_params.pngCompressionLevel());
+        } else {
+            write_success = TiffWriter::writeImage(out_file_path, out_img, false, 0, &TiffCompressionUsed);
+            if (write_success && TiffCompressionUsed != new_output_image_params.TiffCompression()) {
+                new_output_image_params.setTiffCompression(TiffCompressionUsed);
+            }
+        }
+
+        if (!write_success) {
             invalidate_params = true;
         } else {
             deleteMutuallyExclusiveOutputFiles();
 #ifdef HAVE_EXIV2
-            if (GlobalStaticSettings::m_output_copy_icc_metadata) {
+            if (new_output_image_params.outputFormat() == OutputFormat::TIFF &&
+                GlobalStaticSettings::m_output_copy_icc_metadata) {
                 ImageMetadataCopier::copyMetadata(m_pageId.imageId().filePath(), out_file_path);
             }
 #endif
-            if (TiffCompressionUsed != new_output_image_params.TiffCompression()) {
-                new_output_image_params.setTiffCompression(TiffCompressionUsed);
-            }
 //            if (TiffCompressionUsed != params.TiffCompression()) {
 //                params.setTiffCompression(TiffCompressionUsed);
 //                m_ptrSettings->setParams(m_pageId, params);

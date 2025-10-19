@@ -147,8 +147,18 @@ OptionsWidget::OptionsWidget(
         this, SLOT(thresholdWindowSizeChanged(int))
     );
     connect(
-        thresholdCoef, SIGNAL(valueChanged(double)),
-        this, SLOT(thresholdCoefChanged(double))
+        despeckleSlider, SIGNAL(valueChanged(int)),
+        this, SLOT(on_despeckleSlider_valueChanged(int))
+    );
+
+    connect(
+        formatSelector, SIGNAL(currentIndexChanged(int)),
+        this, SLOT(on_formatSelector_currentIndexChanged(int))
+    );
+
+    connect(
+        pngCompressionSlider, SIGNAL(valueChanged(int)),
+        this, SLOT(on_pngCompressionSlider_valueChanged(int))
     );
 
     addAction(actionactionDespeckleOff);
@@ -205,6 +215,26 @@ OptionsWidget::preUpdateUI(PageId const& page_id)
     m_dewarpingMode = params.dewarpingMode();
     m_depthPerception = params.depthPerception();
     setDespeckleLevel(params.despeckleLevel());
+
+    // Update format selector and PNG compression
+    // Default to appropriate format based on color mode if no page-specific setting exists
+    OutputFormat::Format format = m_ptrSettings->getOutputFormat(page_id);
+    if (format == OutputFormat::NotSet) {
+        // No page-specific setting, use color mode based defaults
+        format = (params.colorParams().colorMode() == ColorParams::BLACK_AND_WHITE)
+                 ? OutputFormat::fromString(GlobalStaticSettings::m_output_default_format_bw)
+                 : OutputFormat::fromString(GlobalStaticSettings::m_output_default_format_color);
+    }
+    formatSelector->setCurrentIndex(format == OutputFormat::TIFF ? 0 : 1);
+    pngCompressionPanel->setVisible(format == OutputFormat::PNG);
+
+    int compression = m_ptrSettings->getPngCompressionLevel(page_id);
+    if (compression == -1) { // No page-specific setting
+        compression = GlobalStaticSettings::m_output_png_compression_level;
+    }
+    pngCompressionSlider->setValue(compression);
+    pngCompressionValue->setText(QString::number(compression));
+
     updateDpiDisplay();
     updateColorsDisplay();
     updateLayersDisplay();
@@ -748,6 +778,66 @@ void output::OptionsWidget::on_applyDepthPerception_linkActivated(const QString&
         applyDepthPerceptionConfirmed(pages);
     }
     );
+    dialog->show();
+}
+
+void output::OptionsWidget::on_formatSelector_currentIndexChanged(int index)
+{
+    OutputFormat::Format format = index == 0 ? OutputFormat::TIFF : OutputFormat::PNG;
+    m_ptrSettings->setOutputFormat(m_pageId, format);
+
+    // Update PNG compression panel visibility
+    pngCompressionPanel->setVisible(format == OutputFormat::PNG);
+
+    emit reloadRequested();
+    emit invalidateThumbnail(m_pageId);
+}
+
+void output::OptionsWidget::on_pngCompressionSlider_valueChanged(int value)
+{
+    QString const tooltip_text(QString::number(value));
+    pngCompressionSlider->setToolTip(tooltip_text);
+
+    pngCompressionValue->setText(QString::number(value));
+
+    // Show the tooltip immediately.
+    QPoint const center(pngCompressionSlider->rect().center());
+    QPoint tooltip_pos(pngCompressionSlider->mapFromGlobal(QCursor::pos()));
+    tooltip_pos.setY(center.y());
+    tooltip_pos.setX(qBound(0, tooltip_pos.x(), pngCompressionSlider->width()));
+    tooltip_pos = pngCompressionSlider->mapToGlobal(tooltip_pos);
+    QToolTip::showText(tooltip_pos, tooltip_text, pngCompressionSlider);
+
+    if (pngCompressionSlider->isSliderDown()) {
+        // Wait for it to be released.
+        return;
+    }
+
+    m_ptrSettings->setPngCompressionLevel(m_pageId, value);
+    emit reloadRequested();
+    emit invalidateThumbnail(m_pageId);
+}
+
+void output::OptionsWidget::on_pngCompressionValue_linkActivated(const QString& /*link*/)
+{
+    ApplyToDialog* dialog = new ApplyToDialog(this, m_pageId, m_pageSelectionAccessor);
+    dialog->setWindowTitle(tr("Apply PNG Compression Level"));
+    connect(
+        dialog, &ApplyToDialog::accepted,
+    this, [ = ]() {
+        std::vector<PageId> vec = dialog->getPageRangeSelectorWidget().result();
+        std::set<PageId> pages(vec.begin(), vec.end());
+        int value = pngCompressionSlider->value();
+        for (PageId const& page_id : pages) {
+            m_ptrSettings->setPngCompressionLevel(page_id, value);
+        }
+        emit invalidateAllThumbnails();
+        if (pages.find(m_pageId) != pages.end()) {
+            emit reloadRequested();
+        }
+    }
+    );
+
     dialog->show();
 }
 

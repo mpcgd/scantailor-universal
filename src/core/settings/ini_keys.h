@@ -225,6 +225,12 @@ static const bool _key_output_foreground_layer_enabled_def = true;
 static const char* _key_output_picture_layer_enabled = "picture_zones_layer/enabled";
 static const bool _key_output_picture_layer_enabled_def = true;
 
+static const char* _key_output_default_format_color = "output/default_format_color";
+static const char* _key_output_default_format_color_def = "PNG";
+static const char* _key_output_default_format_bw = "output/default_format_bw";
+static const char* _key_output_default_format_bw_def = "TIFF";
+static const char* _key_output_png_compression_level = "output/png_compression_level";
+static const int _key_output_png_compression_level_def = 9;
 
 static const char* _key_output_metadata_copy_icc = "metadata/copy_icc";
 static const bool _key_output_metadata_copy_icc_def = false;

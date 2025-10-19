@@ -151,6 +151,12 @@ private slots:
 
     void on_actionactionDespeckleAggressive_triggered();
 
+    void on_formatSelector_currentIndexChanged(int index);
+
+    void on_pngCompressionSlider_valueChanged(int value);
+
+    void on_pngCompressionValue_linkActivated(const QString& link);
+
 private:
 
     void dpiChanged(std::set<PageId> const& pages, Dpi const& dpi);

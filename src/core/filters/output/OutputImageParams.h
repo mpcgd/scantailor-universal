@@ -26,6 +26,7 @@
 #include "dewarping/DistortionModel.h"
 #include "DepthPerception.h"
 #include "DespeckleLevel.h"
+#include "OutputFormat.h"
 #include <QSize>
 #include <QRect>
 
@@ -50,7 +51,9 @@ public:
                       dewarping::DistortionModel const& distortion_model,
                       DepthPerception const& depth_perception,
                       DespeckleLevel despeckle_level,
-                      QString const& TiffCompression);
+                      QString const& TiffCompression,
+                      OutputFormat::Format output_format = OutputFormat::TIFF,
+                      int png_compression_level = 9);
 
     explicit OutputImageParams(QDomElement const& el);
 
@@ -87,6 +90,26 @@ public:
     void setTiffCompression(QString const& compression)
     {
         m_TiffCompression = compression;
+    }
+
+    OutputFormat::Format outputFormat() const
+    {
+        return m_outputFormat;
+    }
+
+    void setOutputFormat(OutputFormat::Format format)
+    {
+        m_outputFormat = format;
+    }
+
+    int pngCompressionLevel() const
+    {
+        return m_pngCompressionLevel;
+    }
+
+    void setPngCompressionLevel(int level)
+    {
+        m_pngCompressionLevel = level;
     }
 
     QDomElement toXml(QDomDocument& doc, QString const& name) const;
@@ -155,6 +178,12 @@ private:
 
     /** Tiff compression method of the output image. */
     QString m_TiffCompression;
+
+    /** Output format of the image. */
+    OutputFormat::Format m_outputFormat;
+
+    /** PNG compression level (0-9). */
+    int m_pngCompressionLevel;
 };
 
 } // namespace output

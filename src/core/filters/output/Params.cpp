@@ -27,12 +27,16 @@
 #include <QByteArray>
 #include <QString>
 #include "settings/ini_keys.h"
+#include "settings/globalstaticsettings.h"
 
 namespace output
 {
 
 Params::Params()
-    :  RegenParams(), m_dpi(CommandLine::get().getDefaultOutputDpi())
+    :  RegenParams(),
+       m_dpi(CommandLine::get().getDefaultOutputDpi()),
+       m_outputFormat(OutputFormat::fromString(GlobalStaticSettings::m_output_default_format_color)),
+       m_pngCompressionLevel(GlobalStaticSettings::m_output_png_compression_level)
 {
     QSettings s;
     m_despeckleLevel = (DespeckleLevel) s.value(_key_output_despeckling_default_lvl, _key_output_despeckling_default_lvl_def).toUInt();
@@ -44,7 +48,9 @@ Params::Params(QDomElement const& el)
         m_distortionModel(el.namedItem("distortion-model").toElement()),
         m_depthPerception(el.attribute("depthPerception")),
         m_dewarpingMode(el.attribute("dewarpingMode")),
-        m_despeckleLevel(despeckleLevelFromString(el.attribute("despeckleLevel")))
+        m_despeckleLevel(despeckleLevelFromString(el.attribute("despeckleLevel"))),
+        m_outputFormat(OutputFormat::fromString(el.attribute("outputFormat", OutputFormat::toString(OutputFormat::fromString(GlobalStaticSettings::m_output_default_format_color))))),
+        m_pngCompressionLevel(el.attribute("pngCompressionLevel", QString::number(GlobalStaticSettings::m_output_png_compression_level)).toInt())
 //        m_TiffCompression(el.attribute("tiff-compression"))
 
 {
@@ -70,6 +76,8 @@ Params::toXml(QDomDocument& doc, QString const& name) const
     el.setAttribute("depthPerception", m_depthPerception.toString());
     el.setAttribute("dewarpingMode", m_dewarpingMode.toString());
     el.setAttribute("despeckleLevel", despeckleLevelToString(m_despeckleLevel));
+    el.setAttribute("outputFormat", OutputFormat::toString(m_outputFormat));
+    el.setAttribute("pngCompressionLevel", QString::number(m_pngCompressionLevel));
 //    el.setAttribute("tiff-compression", m_TiffCompression);
     el.appendChild(marshaller.dpi(m_dpi, "dpi"));
 

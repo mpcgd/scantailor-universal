@@ -25,6 +25,10 @@
 #include "settings/ini_keys.h"
 #include <QDialog>
 #include <QInputDialog>
+#include <QGroupBox>
+#include <QComboBox>
+#include <QSlider>
+#include <QLabel>
 
 class SettingsDialog : public QDialog
 {
@@ -176,6 +180,11 @@ private:
     void storeSettingsTreeState(QTreeWidget* treeWidget);
     void setupPictureShapeComboBox();
     void updateMarginsDisplay();
+    void setupOutputFormatPage();
+    void updatePngCompressionLabel(int value);
+    void onFormatSelectorCurrentIndexChanged(int index);
+    void onBwFormatSelectorCurrentIndexChanged(int index);
+    void onPngCompressionSliderValueChanged(int value);
 private:
     Ui::SettingsDialog ui;
     QSettings m_settings;
@@ -184,6 +193,13 @@ private:
     page_layout::Alignment m_alignment;
     double m_mmToUnit;
     double m_unitToMM;
+
+    // Output format settings UI
+    QGroupBox* formatGroupBox;
+    QComboBox* formatSelector;
+    QComboBox* bwFormatSelector;
+    QSlider* pngCompressionLvlSlider;
+    QLabel* pngCompressionLvlLabel;
 };
 
 class QHotKeyInputDialog: public QInputDialog

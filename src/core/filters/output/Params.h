@@ -26,6 +26,7 @@
 #include "DepthPerception.h"
 #include "DespeckleLevel.h"
 #include "RegenParams.h"
+#include "OutputFormat.h"
 
 class QDomDocument;
 class QDomElement;
@@ -104,6 +105,26 @@ public:
         m_despeckleLevel = level;
     }
 
+    OutputFormat::Format getOutputFormat() const
+    {
+        return m_outputFormat;
+    }
+
+    void setOutputFormat(OutputFormat::Format format)
+    {
+        m_outputFormat = format;
+    }
+
+    int getPngCompressionLevel() const
+    {
+        return m_pngCompressionLevel;
+    }
+
+    void setPngCompressionLevel(int level)
+    {
+        m_pngCompressionLevel = level;
+    }
+
 //    QString const & TiffCompression() const
 //    {
 //        return m_TiffCompression;
@@ -127,6 +148,8 @@ private:
     DepthPerception m_depthPerception;
     DewarpingMode m_dewarpingMode;
     DespeckleLevel m_despeckleLevel;
+    OutputFormat::Format m_outputFormat;
+    int m_pngCompressionLevel;
 //    QString m_TiffCompression;
 };
 

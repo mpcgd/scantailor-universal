@@ -74,6 +74,14 @@ public:
 
     void setDespeckleLevel(PageId const& page_id, DespeckleLevel level);
 
+    void setOutputFormat(PageId const& page_id, OutputFormat::Format format);
+
+    OutputFormat::Format getOutputFormat(PageId const& page_id) const;
+
+    void setPngCompressionLevel(PageId const& page_id, int level);
+
+    int getPngCompressionLevel(PageId const& page_id) const;
+
     std::unique_ptr<OutputParams> getOutputParams(PageId const& page_id) const;
 
     void removeOutputParams(PageId const& page_id);

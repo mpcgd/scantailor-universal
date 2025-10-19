@@ -111,6 +111,86 @@ void SettingsDialog::initLanguageList(QString cur_lang)
     ui.language->setEnabled(ui.language->count() > 0);
 }
 
+void SettingsDialog::setupOutputFormatPage()
+{
+    // Create a group box for output format settings
+    formatGroupBox = new QGroupBox(tr("Default Output Formats"), ui.pageOutput);
+
+    // Color/grayscale format selector
+    formatSelector = new QComboBox(formatGroupBox);
+    formatSelector->addItem(tr("TIFF"));
+    formatSelector->addItem(tr("PNG"));
+
+    // B&W format selector (typically only TIFF and PNG, but default to TIFF)
+    bwFormatSelector = new QComboBox(formatGroupBox);
+    bwFormatSelector->addItem(tr("TIFF"));
+    bwFormatSelector->addItem(tr("PNG"));
+
+    // PNG compression slider
+    pngCompressionLvlSlider = new QSlider(Qt::Horizontal, formatGroupBox);
+    pngCompressionLvlSlider->setRange(0, 9);
+    pngCompressionLvlSlider->setTickPosition(QSlider::TicksBelow);
+    pngCompressionLvlSlider->setTickInterval(1);
+
+    pngCompressionLvlLabel = new QLabel("9", formatGroupBox);
+
+    // Layout the widgets
+    QVBoxLayout* mainLayout = qobject_cast<QVBoxLayout*>(ui.pageOutput->layout());
+    if (mainLayout) {
+        mainLayout->insertWidget(mainLayout->count() - 1, formatGroupBox); // Insert before the spacer at the end
+    }
+
+    QFormLayout* layout = new QFormLayout(formatGroupBox);
+
+    QLabel* formatLabel = new QLabel(tr("Color/Grayscale format:"));
+    QLabel* bwFormatLabel = new QLabel(tr("Black & White format:"));
+    QLabel* compressionLabel = new QLabel(tr("PNG Compression Level:"));
+    QLabel* compressionValueLabel = new QLabel(tr("Value:"));
+
+    QHBoxLayout* compressionLayout = new QHBoxLayout();
+    compressionLayout->addWidget(pngCompressionLvlSlider);
+    compressionLayout->addWidget(compressionValueLabel);
+    compressionLayout->addWidget(pngCompressionLvlLabel);
+
+    layout->addRow(formatLabel, formatSelector);
+    layout->addRow(bwFormatLabel, bwFormatSelector);
+    layout->addRow(compressionLabel, compressionLayout);
+
+    // Connect signals
+    connect(formatSelector, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
+            this, &SettingsDialog::onFormatSelectorCurrentIndexChanged);
+    connect(bwFormatSelector, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
+            this, &SettingsDialog::onBwFormatSelectorCurrentIndexChanged);
+    connect(pngCompressionLvlSlider, &QSlider::valueChanged,
+            this, &SettingsDialog::onPngCompressionSliderValueChanged);
+}
+
+void SettingsDialog::updatePngCompressionLabel(int value)
+{
+    pngCompressionLvlLabel->setText(QString::number(value));
+}
+
+void SettingsDialog::onFormatSelectorCurrentIndexChanged(int index)
+{
+    QString format = (index == 0) ? "TIFF" : "PNG";
+    m_settings.setValue(_key_output_default_format_color, format);
+    GlobalStaticSettings::setOutputDefaultFormatColor(format);
+}
+
+void SettingsDialog::onBwFormatSelectorCurrentIndexChanged(int index)
+{
+    QString format = (index == 0) ? "TIFF" : "PNG";
+    m_settings.setValue(_key_output_default_format_bw, format);
+    GlobalStaticSettings::setOutputDefaultFormatBW(format);
+}
+
+void SettingsDialog::onPngCompressionSliderValueChanged(int value)
+{
+    m_settings.setValue(_key_output_png_compression_level, value);
+    GlobalStaticSettings::setOutputPngCompressionLevel(value);
+    updatePngCompressionLabel(value);
+}
+
 void SettingsDialog::backupSettings()
 {
     m_oldSettings.clear();
@@ -666,6 +746,16 @@ void SettingsDialog::on_stackedWidget_currentChanged(int /*arg1*/)
         ui.cbTryDeskewAfterDewarp->setChecked(m_settings.value(_key_dewarp_auto_deskew_after_dewarp, _key_dewarp_auto_deskew_after_dewarp_def).toBool());
     } else if (currentPage == ui.pageOutputMetadata) {
         ui.cbCopyICCProfile->setChecked(m_settings.value(_key_output_metadata_copy_icc, _key_output_metadata_copy_icc_def).toBool());
+    } else if (currentPage == ui.pageOutput) {
+        // Initialize output format settings if not already done
+        if (!formatGroupBox) {
+            setupOutputFormatPage();
+        }
+        // Update values
+        formatSelector->setCurrentIndex(m_settings.value(_key_output_default_format_color, _key_output_default_format_color_def).toString() == "PNG" ? 1 : 0);
+        bwFormatSelector->setCurrentIndex(m_settings.value(_key_output_default_format_bw, _key_output_default_format_bw_def).toString() == "PNG" ? 1 : 0);
+        pngCompressionLvlSlider->setValue(m_settings.value(_key_output_png_compression_level, _key_output_png_compression_level_def).toInt());
+        updatePngCompressionLabel(pngCompressionLvlSlider->value());
     }
 
 }

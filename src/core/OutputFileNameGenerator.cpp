@@ -85,9 +85,32 @@ OutputFileNameGenerator::fileNameFor(PageId const& page) const
 }
 
 QString
+OutputFileNameGenerator::fileNameFor(PageId const& page, output::OutputFormat::Format format) const
+{
+    QString name = fileNameFor(page);
+
+    // Replace the extension
+    if (format == output::OutputFormat::PNG) {
+        name = name.left(name.length() - 4) + ".png";  // Replace .tif with .png
+    } else {
+        // Keep .tif for TIFF
+        name = name.left(name.length() - 4) + ".tif";  // Ensure .tif extension
+    }
+
+    return name;
+}
+
+QString
 OutputFileNameGenerator::filePathFor(PageId const& page) const
 {
     QString const file_name(fileNameFor(page));
+    return QDir(m_outDir).absoluteFilePath(file_name);
+}
+
+QString
+OutputFileNameGenerator::filePathFor(PageId const& page, output::OutputFormat::Format format) const
+{
+    QString const file_name(fileNameFor(page, format));
     return QDir(m_outDir).absoluteFilePath(file_name);
 }
 

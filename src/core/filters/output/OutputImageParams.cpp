@@ -36,7 +36,9 @@ OutputImageParams::OutputImageParams(QSize const& out_image_size, QRect const& c
     dewarping::DistortionModel const& distortion_model,
     DepthPerception const& depth_perception,
     DespeckleLevel const despeckle_level,
-    QString const&TiffCompression)
+    QString const&TiffCompression,
+    OutputFormat::Format output_format,
+    int png_compression_level)
     :   m_size(out_image_size),
         m_contentRect(content_rect),
         m_dpi(dpi),
@@ -45,7 +47,9 @@ OutputImageParams::OutputImageParams(QSize const& out_image_size, QRect const& c
         m_depthPerception(depth_perception),
         m_dewarpingMode(dewarping_mode),
         m_despeckleLevel(despeckle_level),
-        m_TiffCompression(TiffCompression)
+        m_TiffCompression(TiffCompression),
+        m_outputFormat(output_format),
+        m_pngCompressionLevel(png_compression_level)
 {
     // For historical reasons, we disregard post-cropping and post-scaling here.
     xform.setPostCropArea(QPolygonF()); // Resets post-scale as well.
@@ -61,7 +65,9 @@ OutputImageParams::OutputImageParams(QDomElement const& el)
         m_depthPerception(el.attribute("depthPerception")),
         m_dewarpingMode(el.attribute("dewarpingMode")),
         m_despeckleLevel(despeckleLevelFromString(el.attribute("despeckleLevel"))),
-        m_TiffCompression(el.attribute("tiff-compression"))
+        m_TiffCompression(el.attribute("tiff-compression")),
+        m_outputFormat(OutputFormat::fromString(el.attribute("output-format"))),
+        m_pngCompressionLevel(el.attribute("png-compression-level", "9").toInt())
 {
 }
 
@@ -81,6 +87,8 @@ OutputImageParams::toXml(QDomDocument& doc, QString const& name) const
     el.setAttribute("dewarpingMode", m_dewarpingMode.toString());
     el.setAttribute("despeckleLevel", despeckleLevelToString(m_despeckleLevel));
     el.setAttribute("tiff-compression", m_TiffCompression);
+    el.setAttribute("output-format", OutputFormat::toString(m_outputFormat));
+    el.setAttribute("png-compression-level", QString::number(m_pngCompressionLevel));
 
     return el;
 }
@@ -105,6 +113,14 @@ OutputImageParams::matches(OutputImageParams const& other) const
     }
 
     if (m_TiffCompression != other.m_TiffCompression || other.m_TiffCompression.isEmpty()) {
+        return false;
+    }
+
+    if (m_outputFormat != other.m_outputFormat) {
+        return false;
+    }
+
+    if (m_outputFormat == OutputFormat::PNG && m_pngCompressionLevel != other.m_pngCompressionLevel) {
         return false;
     }
 

@@ -21,6 +21,7 @@
 
 #include "FileNameDisambiguator.h"
 #include "IntrusivePtr.h"
+#include "filters/output/OutputFormat.h"
 #include <QString>
 #include <Qt>
 
@@ -29,7 +30,7 @@ class AbstractRelinker;
 
 class OutputFileNameGenerator
 {
-    // Member-wise copying is OK.
+// Member-wise copying is OK.
 public:
     OutputFileNameGenerator();
 
@@ -64,6 +65,10 @@ public:
     QString filePathFor(PageId const& page) const;
 
     QString suggestOverridenFileName(QStringList const& insert_to_filenames, bool after) const;
+
+    QString fileNameFor(PageId const& page, output::OutputFormat::Format format) const;
+
+    QString filePathFor(PageId const& page, output::OutputFormat::Format format) const;
 private:
     IntrusivePtr<FileNameDisambiguator> m_ptrDisambiguator;
     QString m_outDir;

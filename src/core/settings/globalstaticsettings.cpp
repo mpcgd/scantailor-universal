@@ -66,6 +66,10 @@ bool GlobalStaticSettings::m_inversePageOrder = false;
 
 bool GlobalStaticSettings::m_DontUseNativeDialog = true;
 
+QString GlobalStaticSettings::m_output_default_format_color;
+QString GlobalStaticSettings::m_output_default_format_bw;
+int GlobalStaticSettings::m_output_png_compression_level = 9;
+
 
 SettingsChangesSignaller _instance; // we need one instance just to be able to send signals
 
@@ -219,6 +223,10 @@ void GlobalStaticSettings::updateSettings()
     m_simulateSelectionModifierHintEnabled = settings.value(_key_thumbnails_simulate_key_press_hint, _key_thumbnails_simulate_key_press_hint_def).toBool();
 
     m_DontUseNativeDialog = settings.value(_key_dont_use_native_dialog, _key_dont_use_native_dialog_def).toBool();
+
+    setOutputDefaultFormatColor(settings.value(_key_output_default_format_color, _key_output_default_format_color_def).toString());
+    setOutputDefaultFormatBW(settings.value(_key_output_default_format_bw, _key_output_default_format_bw_def).toString());
+    setOutputPngCompressionLevel(settings.value(_key_output_png_compression_level, _key_output_png_compression_level_def).toInt());
 }
 
 void GlobalStaticSettings::updateHotkeys()
@@ -275,6 +283,33 @@ void GlobalStaticSettings::setTiffCompressionBW(QString const& compression_name)
     }
     // QSettings might be out of sync
     QSettings().setValue(_key_tiff_compr_method_bw, m_tiff_compr_method_bw);
+}
+
+void GlobalStaticSettings::setOutputDefaultFormatColor(QString const& format)
+{
+    if (m_output_default_format_color != format) {
+        m_output_default_format_color = format;
+    }
+    // QSettings might be out of sync
+    QSettings().setValue(_key_output_default_format_color, m_output_default_format_color);
+}
+
+void GlobalStaticSettings::setOutputDefaultFormatBW(QString const& format)
+{
+    if (m_output_default_format_bw != format) {
+        m_output_default_format_bw = format;
+    }
+    // QSettings might be out of sync
+    QSettings().setValue(_key_output_default_format_bw, m_output_default_format_bw);
+}
+
+void GlobalStaticSettings::setOutputPngCompressionLevel(int level)
+{
+    if (m_output_png_compression_level != level) {
+        m_output_png_compression_level = level;
+    }
+    // QSettings might be out of sync
+    QSettings().setValue(_key_output_png_compression_level, m_output_png_compression_level);
 }
 
 void GlobalStaticSettings::setTiffCompressionColor(QString const& compression_name)

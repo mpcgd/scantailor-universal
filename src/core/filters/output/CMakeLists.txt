@@ -28,6 +28,7 @@ SET(
         RenderParams.cpp RenderParams.h
         ColorParams.cpp ColorParams.h
         OutputImageParams.cpp OutputImageParams.h
+        OutputFormat.cpp OutputFormat.h
         OutputFileParams.cpp OutputFileParams.h
         OutputParams.cpp OutputParams.h
         PictureLayerProperty.cpp PictureLayerProperty.h

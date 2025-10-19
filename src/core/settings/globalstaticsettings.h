@@ -60,6 +60,10 @@ public:
     static void setTiffCompressionBW(QString const& compression_name);
     static void setTiffCompressionColor(QString const& compression_name);
 
+    static void setOutputDefaultFormatColor(QString const& format);
+    static void setOutputDefaultFormatBW(QString const& format);
+    static void setOutputPngCompressionLevel(int level);
+
 private:
     GlobalStaticSettings() {}
 
@@ -105,6 +109,10 @@ public:
     static bool m_inversePageOrder;
 
     static bool m_DontUseNativeDialog;
+
+    static QString m_output_default_format_color;
+    static QString m_output_default_format_bw;
+    static int m_output_png_compression_level;
 };
 
 #endif // GLOBALSTATICSETTINGS_H
