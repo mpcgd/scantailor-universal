@@ -30,25 +30,48 @@ PngWriter::writeImage(QString const& file_path, QImage const& image, int compres
 
     QImageWriter writer(file_path, "PNG");
 
+    // Optimize compression level mapping for PNG
+    // Qt's QImageWriter uses quality 0-100, where lower values = higher compression
+    // Map our 0-9 compression levels to appropriate quality values
     if (compression_level >= 0 && compression_level <= 9) {
-        writer.setQuality(compression_level * 10); // Qt uses 0-100 scale, so map 0-9 to 0-90, but this isn't exactly compression level
-        // Actually, for PNG, Qt's quality setting affects compression. Higher quality = lower compression.
-        // Since we want compression level where higher number = more compression,
-        // we need to invert: compression_level 9 (max compression) should be quality 0 (max compression)
-        writer.setQuality((9 - compression_level) * 11); // This gives a rough mapping from 0 to 99
+        // More accurate mapping: compression 0-9 maps to quality 100-0
+        // This gives better granularity and more predictable compression
+        int quality = 100 - (compression_level * 11); // 100, 89, 78, 67, 56, 45, 34, 23, 12, 1
+        writer.setQuality(quality);
     }
 
-    // For PNG, we want to ensure the image has the right format
+    // Optimize format handling - avoid unnecessary conversions
     QImage image_to_write = image;
-    if (image.format() != QImage::Format_RGB32 && image.format() != QImage::Format_ARGB32 &&
-        image.format() != QImage::Format_RGB888 && image.format() != QImage::Format_RGBA8888) {
-        // Convert to RGB32 which is well supported for PNG
+
+    // Check if current format is already optimal for PNG
+    bool needs_conversion = false;
+    switch (image.format()) {
+        case QImage::Format_RGB32:
+        case QImage::Format_ARGB32:
+        case QImage::Format_RGB888:
+        case QImage::Format_RGBA8888:
+        case QImage::Format_Indexed8:  // Keep indexed formats when possible
+        case QImage::Format_Mono:      // Keep monochrome when possible
+        case QImage::Format_MonoLSB:
+            // These formats are well-supported by PNG
+            needs_conversion = false;
+            break;
+        default:
+            // Convert to optimal format based on alpha channel presence
+            needs_conversion = true;
+            break;
+    }
+
+    if (needs_conversion) {
         if (image.hasAlphaChannel()) {
-            image_to_write = image.convertToFormat(QImage::Format_ARGB32);
+            image_to_write = image.convertToFormat(QImage::Format_RGBA8888);
         } else {
-            image_to_write = image.convertToFormat(QImage::Format_RGB32);
+            image_to_write = image.convertToFormat(QImage::Format_RGB888);
         }
     }
+
+    // Set optimized PNG-specific options
+    writer.setOptimizedWrite(true);
 
     return writer.write(image_to_write);
 }
