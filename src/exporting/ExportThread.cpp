@@ -119,117 +119,144 @@ ExportThread::run()
 #pragma omp for schedule(dynamic)
     for (int i = 0; i < m_outpaths_vector.count(); i++) {
         const ExportRec& rec = m_outpaths_vector[i];
-        
-        if (!isCancelRequested()) {
-            if (need_reprocess) {
-                m_paused.lock();
-                // ask main thread to reprocess the image
-                emit needReprocess(rec.page_id, &m_orig_fore_subscan);
-                m_wait.wait(&m_paused);
-                m_paused.unlock();
-            }
-        }
 
-        if (!isCancelRequested()) { // don't want to mess with 'omp cancel for'
-
-            const QString out_file_path = rec.filename;
-            QString st_num = QString::number(rec.page_no);
-            const QString name = QString().fill('0', std::max(0, 4 - st_num.length())) + st_num;
-
-            if (!QFile().exists(out_file_path)) {
-                emit error(tr("The file") + " \"" + out_file_path + "\" " + tr("is not found") + ".");
-                exit(-1);
+        try {
+            if (!isCancelRequested()) {
+                if (need_reprocess) {
+                    m_paused.lock();
+                    // ask main thread to reprocess the image
+                    emit needReprocess(rec.page_id, &m_orig_fore_subscan);
+                    m_wait.wait(&m_paused);
+                    m_paused.unlock();
+                }
             }
 
-            QImage out_img = ImageLoader::load(out_file_path);
+            if (!isCancelRequested()) { // don't want to mess with 'omp cancel for'
 
-            QString out_file_path_no_split = m_export_dir + QDir::separator() + name + (m_settings.output_format == OutputFormat::PNG ? ".png" : ".tif");
+                const QString out_file_path = rec.filename;
+                QString st_num = QString::number(rec.page_no);
+                const QString name = QString().fill('0', std::max(0, 4 - st_num.length())) + st_num;
 
-            if (m_settings.mode.testFlag(ExportMode::Zones)) {
-                const QStringList& zones_info = rec.zones_info;
-                QString out_zone_file = m_export_dir + QDir::separator() + "zone" + QDir::separator() + name + ".tsv";
-                if (!zones_info.isEmpty()) {
-                    QFile f(out_zone_file);
-                    if (f.open(QIODevice::WriteOnly)) {
-                        f.write(zones_info.join("\n").toStdString().c_str());
-                        f.close();
+                if (!QFile().exists(out_file_path)) {
+                    emit error(tr("The file") + " \"" + out_file_path + "\" " + tr("is not found") + ".");
+                    exit(-1);
+                }
+
+                QImage out_img = ImageLoader::load(out_file_path);
+
+                QString out_file_path_no_split = m_export_dir + QDir::separator() + name + (m_settings.output_format == OutputFormat::PNG ? ".png" : ".tif");
+
+                if (m_settings.mode.testFlag(ExportMode::Zones)) {
+                    const QStringList& zones_info = rec.zones_info;
+                    QString out_zone_file = m_export_dir + QDir::separator() + "zone" + QDir::separator() + name + ".tsv";
+                    if (!zones_info.isEmpty()) {
+                        QFile f(out_zone_file);
+                        if (f.open(QIODevice::WriteOnly)) {
+                            f.write(zones_info.join("\n").toStdString().c_str());
+                            f.close();
+                        }
+                    } else if (QFile::exists(out_zone_file)) {
+                        QFile::remove(out_zone_file);
                     }
-                } else if (QFile::exists(out_zone_file)) {
-                    QFile::remove(out_zone_file);
-                }
-            }
-
-            std::unique_ptr<QImage> img_foreground(m_settings.mode.testFlag(ExportMode::Foreground) ? new QImage() : nullptr);
-            std::unique_ptr<QImage> img_background(m_settings.mode.testFlag(ExportMode::Background) ? new QImage() : nullptr);
-            std::unique_ptr<QImage> img_mask(m_settings.mode.testFlag(ExportMode::Mask) ? new QImage() : nullptr);
-
-            bool only_bw = true;
-
-            if (out_img.format() == QImage::Format_Indexed8) {
-                only_bw = ImageSplitOps::GenerateSubscans<uint8_t>(out_img, img_foreground.get(), img_background.get(), img_mask.get(), keep_orig, keep_orig ? &m_orig_fore_subscan : nullptr);
-            } else if (out_img.format() == QImage::Format_RGB32 || out_img.format() == QImage::Format_ARGB32) {
-                only_bw = ImageSplitOps::GenerateSubscans<uint32_t>(out_img, img_foreground.get(), img_background.get(), img_mask.get(), keep_orig, keep_orig ? &m_orig_fore_subscan : nullptr);
-            } else if (out_img.format() == QImage::Format_Mono) {
-                if (img_foreground) {
-                    *img_foreground = out_img;
-                }
-                if (img_background && m_settings.generate_blank_back_subscans) {
-                    *img_background = ImageSplitOps::GenerateBlankImage(out_img, out_img.format());
-                } else {
-                    img_background.reset(nullptr);
-                }
-                if (img_mask) {
-                    *img_mask = ImageSplitOps::GenerateBlankImage(out_img, out_img.format(), 0x00000000);
                 }
 
-            }
+                std::unique_ptr<QImage> img_foreground(m_settings.mode.testFlag(ExportMode::Foreground) ? new QImage() : nullptr);
+                std::unique_ptr<QImage> img_background(m_settings.mode.testFlag(ExportMode::Background) ? new QImage() : nullptr);
+                std::unique_ptr<QImage> img_mask(m_settings.mode.testFlag(ExportMode::Mask) ? new QImage() : nullptr);
 
-            int page_no = 0;
+                bool only_bw = true;
 
-            if (m_settings.mode.testFlag(ExportMode::WholeImage)) {
-                writeImage(out_file_path_no_split,
-                          m_settings.page_gen_tweaks.testFlag(PageGenTweak::IgnoreOutputProcessingStage) ? m_orig_fore_subscan : out_img,
-                          m_settings.output_format, m_settings.export_to_multipage, page_no, m_settings.png_compression_level);
-                if (m_settings.export_to_multipage) {
-                    page_no++;
+                if (out_img.format() == QImage::Format_Indexed8) {
+                    only_bw = ImageSplitOps::GenerateSubscans<uint8_t>(out_img, img_foreground.get(), img_background.get(), img_mask.get(), keep_orig, keep_orig ? &m_orig_fore_subscan : nullptr);
+                } else if (out_img.format() == QImage::Format_RGB32 || out_img.format() == QImage::Format_ARGB32) {
+                    only_bw = ImageSplitOps::GenerateSubscans<uint32_t>(out_img, img_foreground.get(), img_background.get(), img_mask.get(), keep_orig, keep_orig ? &m_orig_fore_subscan : nullptr);
+                } else if (out_img.format() == QImage::Format_Mono) {
+                    if (img_foreground) {
+                        *img_foreground = out_img;
+                    }
+                    if (img_background && m_settings.generate_blank_back_subscans) {
+                        *img_background = ImageSplitOps::GenerateBlankImage(out_img, out_img.format());
+                    } else {
+                        img_background.reset(nullptr);
+                    }
+                    if (img_mask) {
+                        *img_mask = ImageSplitOps::GenerateBlankImage(out_img, out_img.format(), 0x00000000);
+                    }
+
                 }
-            }
 
-            if (img_foreground) {
-                QString extension = (m_settings.output_format == OutputFormat::PNG && !m_settings.export_to_multipage) ? ".png" : ".tif";
-                QString out_filepath_foreground = text_dir + QDir::separator() + name + extension;
-                writeImage(m_settings.export_to_multipage ? out_file_path_no_split : out_filepath_foreground,
-                          *img_foreground, m_settings.output_format, m_settings.export_to_multipage, page_no++, m_settings.png_compression_level);
-            }
-            if (img_background && (!only_bw || m_settings.generate_blank_back_subscans)) {
-                QString extension = (m_settings.output_format == OutputFormat::PNG && !m_settings.export_to_multipage) ? ".png" : (m_settings.use_sep_suffix_for_pics ? ".sep.tif" : ".tif");
-                QString out_filepath_background = pic_dir + QDir::separator() + name + extension;
-                writeImage(m_settings.export_to_multipage ? out_file_path_no_split : out_filepath_background,
-                          *img_background, m_settings.output_format, m_settings.export_to_multipage, page_no++, m_settings.png_compression_level);
-            }
+                int page_no = 0;
+                bool write_error = false;
 
-            if (m_settings.mode.testFlag(ExportMode::AutoMask)) {
-                QFileInfo fi(rec.filename);
-                QString filepath_automask = fi.path() + "/cache/automask/" + fi.fileName();
-                QImage automask_img = (QFile::exists(filepath_automask)) ? ImageLoader::load(filepath_automask) :
-                                                                           ImageSplitOps::GenerateBlankImage(out_img, out_img.format(), 0x00000000);
-                QString extension = (m_settings.output_format == OutputFormat::PNG && !m_settings.export_to_multipage) ? ".auto.png" : ".auto.tif";
-                QString out_filepath_mask = mask_dir + QDir::separator() + name + extension;
-                writeImage(m_settings.export_to_multipage ? out_file_path_no_split : out_filepath_mask,
-                          automask_img, m_settings.output_format, m_settings.export_to_multipage, page_no, m_settings.png_compression_level);
-                if (m_settings.export_to_multipage) {
-                    page_no++;
+                if (m_settings.mode.testFlag(ExportMode::WholeImage)) {
+                    if (!writeImage(out_file_path_no_split,
+                                   m_settings.page_gen_tweaks.testFlag(PageGenTweak::IgnoreOutputProcessingStage) ? m_orig_fore_subscan : out_img,
+                                   m_settings.output_format, m_settings.export_to_multipage, page_no, m_settings.png_compression_level)) {
+                        emit error(tr("Failed to write image") + " \"" + out_file_path_no_split + "\"");
+                        write_error = true;
+                    }
+                    if (m_settings.export_to_multipage) {
+                        page_no++;
+                    }
                 }
-            }
 
-            if (img_mask) {
-                QString extension = (m_settings.output_format == OutputFormat::PNG && !m_settings.export_to_multipage) ? ".png" : ".tif";
-                QString out_filepath_mask = mask_dir + QDir::separator() + name + extension;
-                writeImage(m_settings.export_to_multipage ? out_file_path_no_split : out_filepath_mask,
-                          *img_mask, m_settings.output_format, m_settings.export_to_multipage, page_no++, m_settings.png_compression_level);
-            }
+                if (!write_error && img_foreground) {
+                    QString extension = (m_settings.output_format == OutputFormat::PNG && !m_settings.export_to_multipage) ? ".png" : ".tif";
+                    QString out_filepath_foreground = text_dir + QDir::separator() + name + extension;
+                    if (!writeImage(m_settings.export_to_multipage ? out_file_path_no_split : out_filepath_foreground,
+                                   *img_foreground, m_settings.output_format, m_settings.export_to_multipage, page_no++, m_settings.png_compression_level)) {
+                        emit error(tr("Failed to write foreground image") + " \"" + (m_settings.export_to_multipage ? out_file_path_no_split : out_filepath_foreground) + "\"");
+                        write_error = true;
+                    }
+                }
+                if (!write_error && img_background && (!only_bw || m_settings.generate_blank_back_subscans)) {
+                    QString extension = (m_settings.output_format == OutputFormat::PNG && !m_settings.export_to_multipage) ? ".png" : (m_settings.use_sep_suffix_for_pics ? ".sep.tif" : ".tif");
+                    QString out_filepath_background = pic_dir + QDir::separator() + name + extension;
+                    if (!writeImage(m_settings.export_to_multipage ? out_file_path_no_split : out_filepath_background,
+                                   *img_background, m_settings.output_format, m_settings.export_to_multipage, page_no++, m_settings.png_compression_level)) {
+                        emit error(tr("Failed to write background image") + " \"" + (m_settings.export_to_multipage ? out_file_path_no_split : out_filepath_background) + "\"");
+                        write_error = true;
+                    }
+                }
 
-            emit imageProcessed();
+                if (!write_error && m_settings.mode.testFlag(ExportMode::AutoMask)) {
+                    QFileInfo fi(rec.filename);
+                    QString filepath_automask = fi.path() + "/cache/automask/" + fi.fileName();
+                    QImage automask_img = (QFile::exists(filepath_automask)) ? ImageLoader::load(filepath_automask) :
+                                                                               ImageSplitOps::GenerateBlankImage(out_img, out_img.format(), 0x00000000);
+                    QString extension = (m_settings.output_format == OutputFormat::PNG && !m_settings.export_to_multipage) ? ".auto.png" : ".auto.tif";
+                    QString out_filepath_mask = mask_dir + QDir::separator() + name + extension;
+                    if (!writeImage(m_settings.export_to_multipage ? out_file_path_no_split : out_filepath_mask,
+                                   automask_img, m_settings.output_format, m_settings.export_to_multipage, page_no, m_settings.png_compression_level)) {
+                        emit error(tr("Failed to write automask image") + " \"" + (m_settings.export_to_multipage ? out_file_path_no_split : out_filepath_mask) + "\"");
+                        write_error = true;
+                    }
+                    if (m_settings.export_to_multipage) {
+                        page_no++;
+                    }
+                }
+
+                if (!write_error && img_mask) {
+                    QString extension = (m_settings.output_format == OutputFormat::PNG && !m_settings.export_to_multipage) ? ".png" : ".tif";
+                    QString out_filepath_mask = mask_dir + QDir::separator() + name + extension;
+                    if (!writeImage(m_settings.export_to_multipage ? out_file_path_no_split : out_filepath_mask,
+                                   *img_mask, m_settings.output_format, m_settings.export_to_multipage, page_no++, m_settings.png_compression_level)) {
+                        emit error(tr("Failed to write mask image") + " \"" + (m_settings.export_to_multipage ? out_file_path_no_split : out_filepath_mask) + "\"");
+                        write_error = true;
+                    }
+                }
+
+                // Always emit imageProcessed to maintain progress tracking
+                emit imageProcessed();
+            }
+        } catch (const std::exception& e) {
+            // Catch any exceptions during processing and report them
+            emit error(tr("Exception during export: ") + QString::fromStdString(e.what()));
+            emit imageProcessed(); // Still emit progress
+        } catch (...) {
+            // Catch any other exceptions
+            emit error(tr("Unknown exception during export"));
+            emit imageProcessed(); // Still emit progress
         }
     }
 

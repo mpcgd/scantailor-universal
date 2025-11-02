@@ -73,5 +73,19 @@ PngWriter::writeImage(QString const& file_path, QImage const& image, int compres
     // Set optimized PNG-specific options
     writer.setOptimizedWrite(true);
 
-    return writer.write(image_to_write);
+    // Ensure the writer can write to the file
+    if (!writer.canWrite()) {
+        return false;
+    }
+
+    // Write the image and check for errors
+    bool success = writer.write(image_to_write);
+
+    // If writing failed, check for specific error conditions
+    if (!success) {
+        // Ensure we don't leave a partially written file
+        QFile::remove(file_path);
+    }
+
+    return success;
 }
