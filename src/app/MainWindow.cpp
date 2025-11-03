@@ -2123,11 +2123,8 @@ MainWindow::ExportOutput(exporting::ExportSettings settings)
 void
 MainWindow::exportRequestedReprocessing(const PageId& page_id, QImage* fore_subscan)
 {
-
     assert(m_ptrThumbnailCache.get());
-    m_ptrInteractiveQueue->cancelAndClear();
 
-    {
     const PageInfo page_info = m_ptrThumbSequence_export->toPageSequence().pageAt(page_id);
 
     auto output_task = m_ptrStages->outputFilter()->createTask(
@@ -2160,10 +2157,38 @@ MainWindow::exportRequestedReprocessing(const PageId& page_id, QImage* fore_subs
                     )
                 );
 
-    FilterResultPtr result = (*task)();
-    }
+    // Create a wrapper task that will call continueExecution when done
+    class ExportReprocessingTask : public BackgroundTask
+    {
+    public:
+        ExportReprocessingTask(BackgroundTaskPtr const& inner_task,
+                              MainWindow* main_window,
+                              exporting::ExportThread* export_thread)
+            : BackgroundTask(INTERACTIVE),
+              m_innerTask(inner_task),
+              m_mainWindow(main_window),
+              m_exportThread(export_thread) {}
 
-    m_p_export_thread->continueExecution();
+        virtual FilterResultPtr operator()()
+        {
+            FilterResultPtr result = (*m_innerTask)();
+            // Wake up the export thread when reprocessing is complete
+            m_exportThread->continueExecution();
+            return result;
+        }
+
+    private:
+        BackgroundTaskPtr m_innerTask;
+        MainWindow* m_mainWindow;
+        exporting::ExportThread* m_exportThread;
+    };
+
+    BackgroundTaskPtr wrapper_task = BackgroundTaskPtr(
+        new ExportReprocessingTask(task, this, m_p_export_thread)
+    );
+
+    // Add task to interactive queue for asynchronous processing
+    m_ptrInteractiveQueue->addProcessingTask(page_info, wrapper_task);
 }
 
 void

@@ -226,7 +226,16 @@ void
 ExportDialog::exportCompleted()
 {
     setExportLabel();
-    QMessageBox::information(this, tr("Information"), tr("The files export is finished."));
+    // Use a non-blocking approach to avoid hanging the application
+    QMessageBox* msgBox = new QMessageBox(this);
+    msgBox->setAttribute(Qt::WA_DeleteOnClose);
+    msgBox->setWindowModality(Qt::NonModal);
+    msgBox->setIcon(QMessageBox::Information);
+    msgBox->setWindowTitle(tr("Information"));
+    msgBox->setText(tr("The files export is finished."));
+    msgBox->setStandardButtons(QMessageBox::Ok);
+    msgBox->show();
+
     reset();
 }
 
